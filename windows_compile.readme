@@ -1,0 +1,3 @@
+ TO compile on windows, OS parameter need to be set properly based on the system we are working on using the command uname -s
+
+make command prints the output of the OS in first line that need to be replaced in OS for windows.

@@ -715,9 +715,8 @@ Samba::chipId()
 void
 Samba::reset(void)
 {
-    printf("CPU reset.\n");
-
     uint32_t chipId = Samba::chipId();
+    printf("CPU reset.. ChipId:%x\n", chipId);
 
     switch (chipId)
     {
@@ -733,6 +732,7 @@ Samba::reset(void)
     case ATSAMD21E17A_CHIPID:
     case ATSAMD21E16A_CHIPID:
     case ATSAMD21E15A_CHIPID:
+    case ATSAMD21E16B_CHIPID:
 
     case ATSAMD51G18A_CHIPID:
     case ATSAMD51G19A_CHIPID:
