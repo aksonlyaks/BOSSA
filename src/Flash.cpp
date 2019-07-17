@@ -43,7 +43,7 @@ Flash::Flash(Samba& samba,
     : _samba(samba), _name(name), _addr(addr), _pages(pages), _size(size),
       _planes(planes), _lockRegions(lockRegions), _user(user), _wordCopy(samba, user)
 {
-//  printf( "Flash pages %u, page size %u, lockregions %u", pages, size, lockRegions) ;
+  printf( "Flash pages %u, page size %u, lockregions %u", pages, size, lockRegions) ;
 
     assert((size & (size - 1)) == 0);
 //  assert((pages & (pages - 1)) == 0); we have to remove this test as it will be false for SAMD because of bootloader pages removed from total
@@ -90,3 +90,8 @@ Flash::checksumBuffer(uint32_t start_addr, uint32_t size) {
     return _samba.checksumBuffer(start_addr + _addr, size);
 }
 
+void
+Flash::sendProgress(uint8_t progress)
+{
+	return _samba.sendProgress(progress);
+}

@@ -48,9 +48,9 @@ using namespace std;
 #define CAN         0x18
 #define START       'C'
 
-#define TIMEOUT_QUICK   100
-#define TIMEOUT_NORMAL  1000
-#define TIMEOUT_LONG    5000
+#define TIMEOUT_QUICK   1000
+#define TIMEOUT_NORMAL  5000
+#define TIMEOUT_LONG    100000
 
 #define min(a, b)   ((a) < (b) ? (a) : (b))
 
@@ -58,12 +58,38 @@ Samba::Samba() :
     _extChipEraseAvailable(false),
     _extWriteBufferAvailable(false),
     _extChecksumBufferAvailable(false),
-    _debug(false), _isUsb(false)
+	_extProgressAvailable(false),
+    _debug(true), _isUsb(false)
 {
 }
 
 Samba::~Samba()
 {
+}
+
+bool
+Samba::check()
+{
+    uint8_t cmd[3];
+    uint32_t cid;
+
+    _port->timeout(TIMEOUT_NORMAL);
+    // Flush garbage
+    uint8_t dummy[1024];
+    _port->read(dummy, 1024);
+
+    // Set binary mode
+    if (_debug)
+        fprintf(stderr, "Boot the device\n");
+    cmd[0] = 'N';
+    cmd[1] = '#';
+    _port->write(cmd, 2);
+    _port->read(cmd, 2);
+
+    if((cmd[0] == 'N') && (cmd[1] == '#'))
+    	return true;
+
+    return false;
 }
 
 bool
@@ -80,10 +106,10 @@ Samba::init()
     uint8_t dummy[1024];
     _port->read(dummy, 1024);
 
-    if (!_isUsb)
+    /*if (!_isUsb)
     {
         if (_debug)
-            printf("Send auto-baud\n");
+            fprintf(stderr, "Send auto-baud\n");
 
         // RS-232 auto-baud sequence
         _port->put(0x80);
@@ -92,11 +118,11 @@ Samba::init()
         _port->get();
         _port->put('#');
         _port->read(cmd, 3);
-    }
+    }*/
 
     // Set binary mode
     if (_debug)
-        printf("Set binary mode\n");
+        printf("Boot the device\n");
     cmd[0] = 'N';
     cmd[1] = '#';
     _port->write(cmd, 2);
@@ -125,6 +151,7 @@ Samba::init()
                 case 'X': _extChipEraseAvailable = true; break;
                 case 'Y': _extWriteBufferAvailable = true; break;
                 case 'Z': _extChecksumBufferAvailable = true; break;
+                case 'P': _extProgressAvailable = true; break;
             }
             extIndex++;
         }
@@ -252,6 +279,45 @@ Samba::init()
     return false;
 }
 
+uint8_t
+Samba::reboot(SerialPort::Ptr port, int bps)
+{
+    _port = port;
+
+    // Try to connect at a high speed if USB
+    _isUsb = _port->isUsb();
+    if (_isUsb)
+    {
+        if (_port->open(921600))
+        {
+        	if(check())				// Succeeds device rebooted
+        	{
+                if (_debug)
+                    printf("Rebooted\n");
+                return 0;
+        	}
+        	else					// Either device is already in boot mode or some other device
+        	{
+                if (_debug)
+                    printf("Rebooted\n");
+                return 1;
+        	}
+        }
+        else				// device not present
+        {
+        	if(_debug)
+        		fprintf(stderr, "Port close\n");
+            _port->close();
+            return 2;
+        }
+    }
+
+	fprintf(stderr, "Connect close:%d\n", _isUsb);
+    _isUsb = false;
+    disconnect();
+    return 3;
+}
+
 bool
 Samba::connect(SerialPort::Ptr port, int bps)
 {
@@ -269,10 +335,12 @@ Samba::connect(SerialPort::Ptr port, int bps)
         }
         else
         {
+        	if(_debug)
+        		fprintf(stderr, "Port close\n");
             _port->close();
         }
     }
-    _isUsb = false;
+
 
     // Try the serial port at slower speed
     if (_port->open(bps) && init())
@@ -281,7 +349,8 @@ Samba::connect(SerialPort::Ptr port, int bps)
             printf("Connected at %d baud\n", bps);
         return true;
     }
-
+	fprintf(stderr, "Connect close:%d\n", _isUsb);
+    _isUsb = false;
     disconnect();
     return false;
 }
@@ -364,7 +433,7 @@ Samba::readWord(uint32_t addr)
 {
     uint8_t cmd[13];
     uint32_t value;
-
+    _port->timeout(TIMEOUT_LONG);
     snprintf((char*) cmd, sizeof(cmd), "w%08X,4#", addr);
     if (_port->write(cmd, sizeof(cmd) - 1) != sizeof(cmd) - 1)
         throw SambaError();
@@ -561,9 +630,15 @@ Samba::readBinary(uint8_t* buffer, int size)
 void
 Samba::writeBinary(const uint8_t* buffer, int size)
 {
+	uint16_t p_size = 64;
+
     while (size)
     {
-        int written = _port->write(buffer, size);
+    	if(p_size > size)
+    		p_size = size;
+
+        int written = _port->write(buffer, p_size);
+        usleep(10000);
         if (written <= 0)
             throw SambaError();
         buffer += written;
@@ -620,8 +695,8 @@ Samba::write(uint32_t addr, const uint8_t* buffer, int size)
     // port object's flush method before writing the data.
     if (_isUsb)
     {
-        _port->flush();
         writeBinary(buffer, size);
+        _port->flush();
     }
     else
     {
@@ -660,7 +735,7 @@ Samba::version()
     cmd[1] = '#';
     _port->write(cmd, 2);
 
-    _port->timeout(TIMEOUT_QUICK);
+    _port->timeout(TIMEOUT_NORMAL);
     size = _port->read(cmd, sizeof(cmd) - 1);
     _port->timeout(TIMEOUT_NORMAL);
     if (size <= 0)
@@ -808,7 +883,7 @@ Samba::chipErase(uint32_t start_addr)
     int l = snprintf((char*) cmd, sizeof(cmd), "X%08X#", start_addr);
     if (_port->write(cmd, l) != l)
         throw SambaError();
-    _port->timeout(TIMEOUT_LONG);
+    _port->timeout(TIMEOUT_NORMAL);
     _port->read(cmd, 3); // Expects "X\n\r"
     _port->timeout(TIMEOUT_NORMAL);
     if (cmd[0] != 'X')
@@ -829,10 +904,10 @@ Samba::writeBuffer(uint32_t src_addr, uint32_t dst_addr, uint32_t size)
     int l = snprintf((char*) cmd, sizeof(cmd), "Y%08X,0#", src_addr);
     if (_port->write(cmd, l) != l)
         throw SambaError();
-    _port->timeout(TIMEOUT_QUICK);
+    _port->timeout(TIMEOUT_LONG);
     cmd[0] = 0;
     _port->read(cmd, 3); // Expects "Y\n\r"
-    _port->timeout(TIMEOUT_NORMAL);
+    _port->timeout(TIMEOUT_LONG);
     if (cmd[0] != 'Y')
         throw SambaError();
 
@@ -842,7 +917,7 @@ Samba::writeBuffer(uint32_t src_addr, uint32_t dst_addr, uint32_t size)
     _port->timeout(TIMEOUT_LONG);
     cmd[0] = 0;
     _port->read(cmd, 3); // Expects "Y\n\r"
-    _port->timeout(TIMEOUT_NORMAL);
+    _port->timeout(TIMEOUT_LONG);
     if (cmd[0] != 'Y')
         throw SambaError();
     return true;
@@ -877,3 +952,18 @@ Samba::checksumBuffer(uint32_t start_addr, uint32_t size)
     return res;
 }
 
+void Samba::sendProgress(uint8_t progress)
+{
+	if(_debug)
+		printf("\n%s(progress=%d) = ", __FUNCTION__, progress);
+
+	uint8_t cmd[64];
+	int l = snprintf((char *)cmd, sizeof(cmd), "P%04X#", progress);
+	if (_port->write(cmd, l) != l)
+	        throw SambaError();
+	    _port->timeout(TIMEOUT_LONG);
+	_port->read(cmd, 3); // Expects "Y\n\r"
+	_port->timeout(TIMEOUT_LONG);
+	if (cmd[0] != 'P')
+		throw SambaError();
+}

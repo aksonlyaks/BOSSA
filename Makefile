@@ -78,7 +78,7 @@ endif
 # OS X rules
 #
 ifeq ($(OS),Darwin)
-COMMON_SRCS+=PosixSerialPort.cpp OSXPortFactory.cpp
+COMMON_SRCS+=PosixSerialPort.cpp OSXPortFactory.cpp SocketPort.cpp
 COMMON_CXXFLAGS=-arch i386 -arch x86_64 -mmacosx-version-min=10.5
 COMMON_LDFLAGS=-arch i386 -arch x86_64 -mmacosx-version-min=10.5
 APP=BOSSA.app
@@ -140,6 +140,9 @@ ifeq (${OS},FreeBSD)
 COMMON_SRCS+=PosixSerialPort.cpp BSDPortFactory.cpp
 
 endif
+#COMMON_SRCS+=WinSerialPort.cpp WinPortFactory.cpp
+#COMMON_LDFLAGS=-Wl,--enable-auto-import -static -static-libstdc++ -static-libgcc
+#COMMON_LIBS=-Wl,--as-needed -lsetupapi
 
 #
 # Object files

@@ -46,6 +46,7 @@ FlashFactory::create(Samba& samba, uint32_t chipId)
 {
     Flash* flash;
 
+    printf("Flasher creating: %x\n", chipId);
     switch (chipId)
     {
     //
@@ -546,6 +547,7 @@ FlashFactory::create(Samba& samba, uint32_t chipId)
         break;
     }
 
+    printf("Flash created\n");
     return Flash::Ptr(flash);
 }
 

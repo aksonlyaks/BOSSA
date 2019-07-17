@@ -33,11 +33,27 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
+#include <netdb.h>
+#include <netinet/in.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
+#include <pthread.h>
+
+#define MAX 80
+#define PORT 8080
+#define SA struct sockaddr
+
 #include "CmdOpts.h"
 #include "Samba.h"
 #include "PortFactory.h"
 #include "FlashFactory.h"
 #include "Flasher.h"
+#include "SocketPort.h"
+
+void* flasher_thread(void *arg);
 
 using namespace std;
 
@@ -63,6 +79,7 @@ public:
     bool debug;
     bool help;
     bool forceUsb;
+    bool socket;
     string forceUsbArg;
 
     int readArg;
@@ -70,6 +87,7 @@ public:
     int bootArg;
     int bodArg;
     int borArg;
+    int socketPort;
     string lockArg;
     string unlockArg;
 };
@@ -94,6 +112,7 @@ BossaConfig::BossaConfig()
     bootArg = 1;
     bodArg = 1;
     borArg = 1;
+    socketPort = 4445;
 
     reset = false;
 }
@@ -189,7 +208,12 @@ static Option opts[] =
       'R', "reset", &config.reset,
       { ArgNone },
       "reset CPU (if supported)"
-    }
+    },
+	{
+		'S', "socket", &config.socket,
+		{ ArgOptional, ArgInt, "PORT", {&config.socketPort}},
+		"Start Bossac Server on Port(Default 4445)"
+	}
 };
 
 bool
@@ -230,7 +254,7 @@ timer_stop()
     gettimeofday(&end, NULL);
     return (end.tv_sec - start_time.tv_sec) + (end.tv_usec - start_time.tv_usec) / 1000000.0;
 }
-
+char filename[512];
 int
 main(int argc, char* argv[])
 {
@@ -271,6 +295,7 @@ main(int argc, char* argv[])
         fprintf(stderr, "%s: extra arguments found\n", argv[0]);
         return help(argv[0]);
     }
+    strcpy(filename, argv[args]);
 
     if (config.help)
     {
@@ -297,130 +322,70 @@ main(int argc, char* argv[])
         Samba samba;
         PortFactory portFactory;
         FlashFactory flashFactory;
+        int opt = 1;
+        pthread_t thread_id;
 
         if (config.debug)
             samba.setDebug(true);
 
-        bool isUsb = false;
-        if (config.forceUsb)
+        if(config.socket)
         {
-            if (config.forceUsbArg.compare("true")==0)
-                isUsb = true;
-            else if (config.forceUsbArg.compare("false")==0)
-                isUsb = false;
-            else
-            {
-                fprintf(stderr, "Invalid USB value: %s\n", config.forceUsbArg.c_str());
-                return 1;
-            }
+
+			int sockfd, connfd, len;
+			struct sockaddr_in servaddr, cli;
+
+			// socket create and verification
+			sockfd = socket(AF_INET, SOCK_STREAM, 0);
+			if (sockfd == -1) {
+				printf("socket creation failed...\n");
+				exit(0);
+			}
+			else
+				printf("Socket successfully created..\n");
+			bzero(&servaddr, sizeof(servaddr));
+
+			//set master socket to allow multiple connections ,
+		    //this is just a good habit, it will work without this
+		    if( setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&opt,
+		          sizeof(opt)) < 0 )
+		    {
+		        perror("setsockopt");
+		        exit(EXIT_FAILURE);
+		    }
+			// assign IP, PORT
+			servaddr.sin_family = AF_INET;
+			servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+			servaddr.sin_port = htons(config.socketPort);
+
+			// Binding newly created socket to given IP and verification
+			if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) {
+				printf("socket bind failed...\n");
+				exit(0);
+			}
+			else
+				printf("Socket successfully binded..\n");
+
+			// Now server is ready to listen and verification
+			if ((listen(sockfd, 1)) != 0) {
+				printf("Listen failed...\n");
+				exit(0);
+			}
+			else
+				printf("Server listening..\n");
+			len = sizeof(cli);
+			while(1)
+			{
+				// Accept the data packet from client and verification
+				connfd = accept(sockfd, (SA*)&cli, (socklen_t *)&len);
+				if (connfd < 0) {
+					printf("server acccept failed...\n");
+					exit(0);
+				}
+				else
+					printf("server acccept the client...:%d\n", connfd);
+			    pthread_create(&thread_id, NULL, flasher_thread, &connfd);
+        	}
         }
-
-        if (config.port)
-        {
-            bool res;
-            if (config.forceUsb)
-                res = samba.connect(portFactory.create(config.portArg, isUsb));
-            else
-                res = samba.connect(portFactory.create(config.portArg));
-            if (!res)
-            {
-                fprintf(stderr, "No device found on %s\n", config.portArg.c_str());
-                return 1;
-            }
-        }
-        else
-        {
-            string port;
-            if (!autoScan(samba, portFactory, port))
-            {
-                fprintf(stderr, "Auto scan for device failed\n");
-                fprintf(stderr, "Try specifying a serial port with the '-p' option\n");
-                return 1;
-            }
-            printf("Device found on %s\n", port.c_str());
-        }
-
-        uint32_t chipId = samba.chipId();
-        printf( "Atmel SMART device 0x%08x found\n", chipId ) ;
-
-        Flash::Ptr flash = flashFactory.create(samba, chipId);
-        if (flash.get() == NULL)
-        {
-            fprintf(stderr, "Flash for chip ID %08x is not supported\n", chipId);
-            return 1;
-        }
-
-        Flasher flasher(flash);
-
-        if (config.info)
-            flasher.info(samba);
-
-        if (config.unlock)
-            flasher.lock(config.unlockArg, false);
-
-        if (config.erase)
-        {
-            timer_start();
-            flasher.erase();
-            printf("done in %5.3f seconds\n", timer_stop());
-        }
-
-        if (config.write)
-        {
-            printf("\n");
-            timer_start();
-            flasher.write(argv[args]);
-            printf("done in %5.3f seconds\n", timer_stop());
-        }
-
-        if (config.verify)
-        {
-            printf("\n");
-            timer_start();
-            if (!flasher.verify(argv[args]))
-            {
-                return 2;
-            }
-            printf("done in %5.3f seconds\n", timer_stop());
-        }
-
-        if (config.read)
-        {
-            printf("\n");
-            timer_start();
-            flasher.read(argv[args], config.readArg);
-            printf("done in %5.3f seconds\n", timer_stop());
-        }
-
-        if (config.boot)
-        {
-            printf("Set boot flash %s\n", config.bootArg ? "true" : "false");
-            flash->setBootFlash(config.bootArg);
-        }
-
-        if (config.bod)
-        {
-            printf("Set brownout detect %s\n", config.bodArg ? "true" : "false");
-            flash->setBod(config.bodArg);
-        }
-
-        if (config.bor)
-        {
-            printf("Set brownout reset %s\n", config.borArg ? "true" : "false");
-            flash->setBor(config.borArg);
-        }
-
-        if (config.security)
-        {
-            printf("Set security\n");
-            flash->setSecurity();
-        }
-
-        if (config.lock)
-            flasher.lock(config.lockArg, true);
-
-        if (config.reset)
-            samba.reset();
     }
     catch (exception& e)
     {
@@ -436,3 +401,167 @@ main(int argc, char* argv[])
     return 0;
 }
 
+void* flasher_thread(void *arg)
+{
+    bool isUsb = true;
+    int client_fd = *(int *)arg;
+
+	fprintf(stderr, "Thread Started:%d\n", client_fd);
+    try
+    {
+        Samba samba;
+        PortFactory portFactory;
+        FlashFactory flashFactory;
+
+		if (config.forceUsb)
+		{
+			if (config.forceUsbArg.compare("true")==0)
+				isUsb = true;
+			else if (config.forceUsbArg.compare("false")==0)
+				isUsb = false;
+			else
+			{
+				fprintf(stderr, "Invalid USB value: %s\n", config.forceUsbArg.c_str());
+				return NULL;
+			}
+		}
+
+		if (config.port)
+		{
+			bool res;
+			uint8_t ret;
+
+			if (config.forceUsb)
+				ret = samba.reboot(portFactory.create(config.portArg, isUsb));
+			else
+				ret = samba.reboot(portFactory.create(config.portArg));
+			if ((ret == 2) || (ret == 3))
+			{
+				fprintf(stderr, "No device found on %s\n", config.portArg.c_str());
+				return NULL;
+			}
+			else if((ret == 1) || (ret == 0))
+			{
+				fprintf(stderr, "waiting for device to reboot on %s\n", config.portArg.c_str());
+			}
+
+
+			if (config.forceUsb)
+				res = samba.connect(portFactory.create(config.portArg, isUsb));
+			else
+				res = samba.connect(portFactory.create(config.portArg));
+			if (!res)
+			{
+				fprintf(stderr, "waiting for the device to boot on %s\n", config.portArg.c_str());
+				return NULL;
+			}
+		}
+		else
+		{
+			bool res;
+			fprintf(stderr, "Samba Connect start\n");
+		    SocketPort *p = new SocketPort(std::string(), client_fd);
+			res = samba.connect(SerialPort::Ptr(p));
+			if (!res)
+			{
+				fprintf(stderr, "No device found on\n");
+				return NULL;
+			}
+			fprintf(stderr, "Samba Connected\n");
+		}
+
+		fprintf(stderr, "ChipID\n");
+		uint32_t chipId = samba.chipId();
+
+		fprintf( stderr, "Atmel SMART device 0x%08x found\n", chipId );
+		Flash::Ptr flash = flashFactory.create(samba, chipId);
+		if (flash.get() == NULL)
+		{
+			fprintf(stderr, "Flash for chip ID %08x is not supported\n", chipId);
+			return NULL;
+		}
+		fprintf( stderr, "Atmel SMART device 0x%08x found\n", chipId );
+		Flasher flasher(flash);
+
+		if (config.info)
+			flasher.info(samba);
+
+		if (config.unlock)
+			flasher.lock(config.unlockArg, false);
+
+		if (config.erase)
+		{
+			timer_start();
+			flasher.erase();
+			printf("done in %5.3f seconds\n", timer_stop());
+		}
+
+		if (config.write)
+		{
+			printf("\n");
+			timer_start();
+			flasher.write(filename);
+			printf("done in %5.3f seconds\n", timer_stop());
+		}
+
+		if (config.verify)
+		{
+			printf("\n");
+			timer_start();
+			if (!flasher.verify(filename))
+			{
+				return NULL;
+			}
+			printf("done in %5.3f seconds\n", timer_stop());
+		}
+
+		if (config.read)
+		{
+			printf("\n");
+			timer_start();
+			flasher.read(filename, config.readArg);
+			printf("done in %5.3f seconds\n", timer_stop());
+		}
+
+		if (config.boot)
+		{
+			printf("Set boot flash %s\n", config.bootArg ? "true" : "false");
+			flash->setBootFlash(config.bootArg);
+		}
+
+		if (config.bod)
+		{
+			printf("Set brownout detect %s\n", config.bodArg ? "true" : "false");
+			flash->setBod(config.bodArg);
+		}
+
+		if (config.bor)
+		{
+			printf("Set brownout reset %s\n", config.borArg ? "true" : "false");
+			flash->setBor(config.borArg);
+		}
+
+		if (config.security)
+		{
+			printf("Set security\n");
+			flash->setSecurity();
+		}
+
+		if (config.lock)
+			flasher.lock(config.lockArg, true);
+
+		if (config.reset)
+			samba.reset();
+	}
+	catch (exception& e)
+	{
+		fprintf(stderr, "\n%s\n", e.what());
+		return NULL;
+	}
+	catch(...)
+	{
+		fprintf(stderr, "\nUnhandled exception\n");
+		return NULL;
+	}
+	return NULL;
+}

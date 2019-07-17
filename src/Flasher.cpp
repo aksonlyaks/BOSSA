@@ -97,7 +97,7 @@ Flasher::write(const char* filename)
 
             // If multi-page write is available....
 
-            const uint32_t BLK_SIZE = 4096;
+            const uint32_t BLK_SIZE = 256;
             uint32_t offset = 0;
             uint8_t buffer[BLK_SIZE];
             memset(buffer, 0, BLK_SIZE);
@@ -111,7 +111,8 @@ Flasher::write(const char* filename)
                 _flash->writeBuffer(offset, fbytes);
                 offset += fbytes;
                 progressBar(offset/pageSize, numPages);
-
+                if(_flash->isProgressAvailable())
+                	_flash->sendProgress((uint8_t)(((offset/pageSize) * 100)/ numPages));
                 memset(buffer, 0, BLK_SIZE);
             }
 

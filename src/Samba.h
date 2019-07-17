@@ -41,7 +41,7 @@ class SambaError : public std::exception
 {
 public:
     SambaError() : exception() {};
-    const char* what() const throw() { return "SAM-BA operation failed"; }
+    const char* what() const throw() { return  __FUNCTION__; }
 };
 
 
@@ -51,6 +51,7 @@ public:
     Samba();
     virtual ~Samba();
 
+    uint8_t reboot(SerialPort::Ptr port, int bps=115200);
     bool connect(SerialPort::Ptr port, int bps=115200);
     void disconnect();
 
@@ -69,7 +70,7 @@ public:
 
     uint32_t chipId();
 
-    void setDebug(bool debug) { _debug = debug; }
+    void setDebug(bool debug) { _debug = true; }
 
     const SerialPort& getSerialPort() { return *_port; }
 
@@ -87,15 +88,19 @@ public:
 
     uint16_t crc16AddByte(uint8_t c, uint16_t crc);
 
+    void sendProgress(uint8_t progress);
+    bool isProgressAvailable() { return _extProgressAvailable; }
 private:
     bool _extChipEraseAvailable;
     bool _extWriteBufferAvailable;
     bool _extChecksumBufferAvailable;
+    bool _extProgressAvailable;
     bool _debug;
     bool _isUsb;
     SerialPort::Ptr _port;
 
     bool init();
+    bool check();
 
     uint16_t crc16Calc(const uint8_t *data, int len);
     bool crc16Check(const uint8_t *blk);

@@ -45,6 +45,7 @@ public:
 
     virtual SerialPort::Ptr create(const std::string& name) = 0;
     virtual SerialPort::Ptr create(const std::string& name, bool isUsb) = 0;
+    virtual SerialPort::Ptr create(const std::string& name, int dev_id) = 0;
 };
 
 #if defined(__WIN32__)
