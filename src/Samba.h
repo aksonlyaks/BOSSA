@@ -51,6 +51,7 @@ public:
     Samba();
     virtual ~Samba();
 
+    uint8_t reboot(SerialPort::Ptr port, int bps=115200);
     bool connect(SerialPort::Ptr port, int bps=115200);
     void disconnect();
 
@@ -96,6 +97,7 @@ private:
     SerialPort::Ptr _port;
 
     bool init();
+    bool check();
 
     uint16_t crc16Calc(const uint8_t *data, int len);
     bool crc16Check(const uint8_t *blk);

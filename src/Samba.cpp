@@ -67,15 +67,37 @@ Samba::~Samba()
 }
 
 bool
+Samba::check()
+{
+    uint8_t cmd[3];
+    uint32_t cid;
+
+    _port->timeout(TIMEOUT_NORMAL);
+    // Flush garbage
+    uint8_t dummy[1024];
+    _port->read(dummy, 1024);
+
+    // Set binary mode
+    if (_debug)
+        fprintf(stderr, "Boot the device\n");
+    cmd[0] = 'N';
+    cmd[1] = '#';
+    _port->write(cmd, 2);
+    _port->read(cmd, 2);
+
+    if((cmd[0] == 'N') && (cmd[1] == '#'))
+    	return true;
+
+    return false;
+}
+
+bool
 Samba::init()
 {
     uint8_t cmd[3];
     uint32_t cid;
 
     _port->timeout(TIMEOUT_NORMAL);
-
-    // Allows Arduino auto-reset
-    usleep(500000);
     // Flush garbage
     uint8_t dummy[1024];
     _port->read(dummy, 1024);
@@ -250,6 +272,45 @@ Samba::init()
     }
 
     return false;
+}
+
+uint8_t
+Samba::reboot(SerialPort::Ptr port, int bps)
+{
+    _port = port;
+
+    // Try to connect at a high speed if USB
+    _isUsb = _port->isUsb();
+    if (_isUsb)
+    {
+        if (_port->open(921600))
+        {
+        	if(check())				// Succeeds device rebooted
+        	{
+                if (_debug)
+                    printf("Rebooted\n");
+                return 0;
+        	}
+        	else					// Either device is already in boot mode or some other device
+        	{
+                if (_debug)
+                    printf("Rebooted\n");
+                return 1;
+        	}
+        }
+        else				// device not present
+        {
+        	if(_debug)
+        		fprintf(stderr, "Port close\n");
+            _port->close();
+            return 2;
+        }
+    }
+
+	fprintf(stderr, "Connect close:%d\n", _isUsb);
+    _isUsb = false;
+    disconnect();
+    return 3;
 }
 
 bool

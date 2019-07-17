@@ -316,18 +316,35 @@ main(int argc, char* argv[])
         }
 
         if (config.port)
-        {
-            bool res;
-            if (config.forceUsb)
-                res = samba.connect(portFactory.create(config.portArg, isUsb));
-            else
-                res = samba.connect(portFactory.create(config.portArg));
-            if (!res)
-            {
-                fprintf(stderr, "No device found on %s\n", config.portArg.c_str());
-                return 1;
-            }
-        }
+		{
+			bool res;
+			uint8_t ret;
+
+			if (config.forceUsb)
+				ret = samba.reboot(portFactory.create(config.portArg, isUsb));
+			else
+				ret = samba.reboot(portFactory.create(config.portArg));
+			if ((ret == 2) || (ret == 3))
+			{
+				fprintf(stderr, "No device found on %s\n", config.portArg.c_str());
+				return NULL;
+			}
+			else if((ret == 1) || (ret == 0))
+			{
+				fprintf(stderr, "waiting for device to reboot on %s\n", config.portArg.c_str());
+			}
+
+			sleep(3);
+			if (config.forceUsb)
+				res = samba.connect(portFactory.create(config.portArg, isUsb));
+			else
+				res = samba.connect(portFactory.create(config.portArg));
+			if (!res)
+			{
+				fprintf(stderr, "No device found on %s\n", config.portArg.c_str());
+				return NULL;
+			}
+		}
         else
         {
             string port;
