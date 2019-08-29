@@ -90,3 +90,14 @@ Flash::checksumBuffer(uint32_t start_addr, uint32_t size) {
     return _samba.checksumBuffer(start_addr + _addr, size);
 }
 
+void
+Flash::sendProgress(uint8_t progress)
+{
+	return _samba.sendProgress(progress);
+}
+
+void
+Flash::sendVerify(uint32_t crc)
+{
+	return _samba.sendVerify(crc);
+}

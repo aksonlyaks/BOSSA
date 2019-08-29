@@ -57,9 +57,30 @@ OSXPortFactory::create(const std::string& name)
 }
 
 SerialPort::Ptr
+OSXPortFactory::create(const std::string& name, const std::string& fname)
+{
+    bool isUsb = false;
+
+    if (name.find("usb") != std::string::npos)
+        isUsb = true;
+
+    return create(name, fname, isUsb);
+}
+
+SerialPort::Ptr
 OSXPortFactory::create(const std::string& name, bool isUsb)
 {
     PosixSerialPort *p = new PosixSerialPort(name, isUsb);
+    // Needed to avoid upload errors
+    p->setAutoFlush(true);
+    return SerialPort::Ptr(p);
+}
+
+SerialPort::Ptr
+OSXPortFactory::create(const std::string& name, const std::string& fname, bool isUsb)
+{
+	fprintf(stderr, "File:%s\n", fname.c_str());
+    PosixSerialPort *p = new PosixSerialPort(name, fname, isUsb);
     // Needed to avoid upload errors
     p->setAutoFlush(true);
     return SerialPort::Ptr(p);

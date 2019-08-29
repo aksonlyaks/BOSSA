@@ -49,7 +49,8 @@ public:
 
     virtual SerialPort::Ptr create(const std::string& name);
     virtual SerialPort::Ptr create(const std::string& name, bool isUsb);
-
+    virtual SerialPort::Ptr create(const std::string& name, const std::string& fname);
+    virtual SerialPort::Ptr create(const std::string& name, const std::string& fname, bool isUsb);
 private:
     std::string _empty;
     DIR* _dir;

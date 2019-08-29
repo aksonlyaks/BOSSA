@@ -58,7 +58,9 @@ Samba::Samba() :
     _extChipEraseAvailable(false),
     _extWriteBufferAvailable(false),
     _extChecksumBufferAvailable(false),
-    _debug(false), _isUsb(false)
+	_extProgressAvailable(false),
+	_extVerifyAvailable(false),
+    _debug(true), _isUsb(false)
 {
 }
 
@@ -147,6 +149,9 @@ Samba::init()
                 case 'X': _extChipEraseAvailable = true; break;
                 case 'Y': _extWriteBufferAvailable = true; break;
                 case 'Z': _extChecksumBufferAvailable = true; break;
+                case 'P': _extProgressAvailable = true; break;
+                case 'I': _extVerifyAvailable = true; break;
+
             }
             extIndex++;
         }
@@ -683,6 +688,7 @@ Samba::write(uint32_t addr, const uint8_t* buffer, int size)
     {
         _port->flush();
         writeBinary(buffer, size);
+        printf("Binary written\n");
     }
     else
     {
@@ -938,3 +944,34 @@ Samba::checksumBuffer(uint32_t start_addr, uint32_t size)
     return res;
 }
 
+void Samba::sendProgress(uint8_t progress)
+{
+	if(_debug)
+		printf("\n%s(progress=%d) = ", __FUNCTION__, progress);
+
+	uint8_t cmd[64];
+	int l = snprintf((char *)cmd, sizeof(cmd), "P%04X#", progress);
+	if (_port->write(cmd, l) != l)
+	        throw SambaError();
+	    _port->timeout(TIMEOUT_LONG);
+	_port->read(cmd, 3); // Expects "Y\n\r"
+	_port->timeout(TIMEOUT_LONG);
+	if (cmd[0] != 'P')
+		throw SambaError();
+}
+
+void Samba::sendVerify(uint32_t crc)
+{
+	if(_debug)
+		printf("\n%s(CRC=%x) = ", __FUNCTION__, crc);
+
+	uint8_t cmd[64];
+	int l = snprintf((char *)cmd, sizeof(cmd), "I%04X#", crc);
+	if (_port->write(cmd, l) != l)
+	        throw SambaError();
+	    _port->timeout(TIMEOUT_LONG);
+	_port->read(cmd, 3); // Expects "I\n\r"
+	_port->timeout(TIMEOUT_LONG);
+	if (cmd[0] != 'I')
+		throw SambaError();
+}

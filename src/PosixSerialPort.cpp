@@ -47,7 +47,13 @@
 
 PosixSerialPort::PosixSerialPort(const std::string& name, bool isUsb) :
     SerialPort(name), _devfd(-1), _isUsb(isUsb), _timeout(0),
-    _autoFlush(false)
+    _autoFlush(false), _ffd(-1)
+{
+}
+
+PosixSerialPort::PosixSerialPort(const std::string& name, const std::string& fname, bool isUsb) :
+    SerialPort(name), _devfd(-1), _isUsb(isUsb), _timeout(0),
+    _autoFlush(false), _ffd(-1), _fname(fname)
 {
 }
 
@@ -56,6 +62,8 @@ PosixSerialPort::~PosixSerialPort()
     if (_devfd >= 0)
         ::close(_devfd);
 }
+
+char slNo = '0';
 
 bool
 PosixSerialPort::open(int baud,
@@ -75,6 +83,15 @@ PosixSerialPort::open(int baud,
         _devfd = ::open(dev.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
         if (_devfd == -1)
             return false;
+    }
+
+    _ffd = ::open((_fname +".flash").c_str(), O_RDWR);
+    if(_ffd == -1)
+    	_ffd = ::open((_fname + ".flash").c_str(), O_CREAT|O_RDWR);
+    if(_ffd == -1)
+    {
+    	fprintf(stderr, "File not created:%s\n", _fname.c_str());
+    	return false;
     }
 
     if (tcgetattr(_devfd, &options) == -1)
@@ -204,6 +221,11 @@ PosixSerialPort::close()
     if (_devfd >= 0)
         ::close(_devfd);
     _devfd = -1;
+
+    if(_ffd >= 0)
+    	::close(_ffd);
+
+    _ffd = -1;
 }
 
 int
@@ -250,13 +272,34 @@ PosixSerialPort::read(uint8_t* buffer, int len)
 int
 PosixSerialPort::write(const uint8_t* buffer, int len)
 {
-    if (_devfd == -1)
+    static int totalLen = 0;
+    int ret;
+
+	if (_devfd == -1)
         return -1;
+
+/*	if((totalLen + len) > 1024)
+	{
+		::close(_ffd);
+		_ffd = ::open((_fname + slNo + ".flash").c_str(), O_CREAT|O_RDWR);
+	}*/
+COMPLETE:
 
     int res = ::write(_devfd, buffer, len);
     // Used on macos to avoid upload errors
     if (_autoFlush)
         flush();
+
+    ret = ::write(_ffd, buffer, res);
+	printf("LengthTobe:%d LengthWritten:%d\n", res, ret);
+    if(ret != res)
+    {
+    	res = (res - ret);
+    	goto COMPLETE;
+    }
+    totalLen += ret;
+    printf("TotalLen:%d\n", totalLen);
+
     return res;
 }
 

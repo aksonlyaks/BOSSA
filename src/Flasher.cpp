@@ -111,7 +111,8 @@ Flasher::write(const char* filename)
                 _flash->writeBuffer(offset, fbytes);
                 offset += fbytes;
                 progressBar(offset/pageSize, numPages);
-
+                if(_flash->isProgressAvailable())
+                	_flash->sendProgress((uint8_t)(((offset/pageSize) * 100)/ numPages));
                 memset(buffer, 0, BLK_SIZE);
             }
 
@@ -186,6 +187,10 @@ Flasher::verify(const char* filename)
                 uint16_t crc = 0;
                 for (i=0; i<fbytes; i++)
                     crc = _flash->crc16AddByte(buffer[i], crc);
+				if(_flash->isVerifyAvailable())
+				{
+					_flash->sendVerify(crc);
+				}
                 uint16_t flashCrc = _flash->checksumBuffer(offset, fbytes);
                 offset += fbytes;
 

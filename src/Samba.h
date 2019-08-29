@@ -87,11 +87,17 @@ public:
     bool isChecksumBufferAvailable() { return _extChecksumBufferAvailable; }
 
     uint16_t crc16AddByte(uint8_t c, uint16_t crc);
+    void sendProgress(uint8_t progress);
+    void sendVerify(uint32_t crc);
+    bool isProgressAvailable() { return _extProgressAvailable; }
+    bool isVerifyAvailable() { return _extVerifyAvailable; }
 
 private:
     bool _extChipEraseAvailable;
     bool _extWriteBufferAvailable;
     bool _extChecksumBufferAvailable;
+    bool _extProgressAvailable;
+    bool _extVerifyAvailable;
     bool _debug;
     bool _isUsb;
     SerialPort::Ptr _port;

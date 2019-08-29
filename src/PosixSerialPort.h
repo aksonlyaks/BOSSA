@@ -35,6 +35,7 @@ class PosixSerialPort : public SerialPort
 {
 public:
     PosixSerialPort(const std::string& name, bool isUsb);
+    PosixSerialPort(const std::string& name, const std::string& fname, bool isUsb);
     virtual ~PosixSerialPort();
 
     bool open(int baud = 115200,
@@ -59,6 +60,10 @@ private:
     bool _isUsb;
     int _timeout;
     bool _autoFlush;
+    int _ffd;
+
+protected:
+    std::string _fname;
 };
 
 #endif // _POSIXSERIALPORT_H

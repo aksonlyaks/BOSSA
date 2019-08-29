@@ -124,11 +124,15 @@ public:
     virtual uint16_t checksumBuffer(uint32_t start_addr, uint32_t size);
     virtual uint16_t crc16AddByte(uint8_t d, uint16_t crc) { return _samba.crc16AddByte(d, crc); }
     virtual void readPage(uint32_t page, uint8_t* data) = 0;
+    virtual void sendProgress(uint8_t progress);
+    virtual void sendVerify(uint32_t crc);
 
     typedef std::auto_ptr<Flash> Ptr;
 
     bool isWriteBufferAvailable() { return _samba.isWriteBufferAvailable(); }
     bool isChecksumBufferAvailable() { return _samba.isChecksumBufferAvailable(); }
+    bool isProgressAvailable() { return _samba.isProgressAvailable(); }
+    bool isVerifyAvailable() { return _samba.isVerifyAvailable(); }
 
 protected:
     Samba& _samba;

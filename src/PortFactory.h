@@ -44,7 +44,9 @@ public:
     virtual std::string next() = 0;
 
     virtual SerialPort::Ptr create(const std::string& name) = 0;
+    virtual SerialPort::Ptr create(const std::string& name, const std::string& fname) = 0;
     virtual SerialPort::Ptr create(const std::string& name, bool isUsb) = 0;
+    virtual SerialPort::Ptr create(const std::string& name, const std::string& fname, bool isUsb) = 0;
 };
 
 #if defined(__WIN32__)
