@@ -60,7 +60,7 @@ Samba::Samba() :
     _extChecksumBufferAvailable(false),
 	_extProgressAvailable(false),
 	_extVerifyAvailable(false),
-    _debug(true), _isUsb(false)
+    _debug(false), _isUsb(false)
 {
 }
 
