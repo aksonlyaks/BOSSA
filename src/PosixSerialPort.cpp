@@ -35,7 +35,8 @@
 #include <errno.h>
 #include <termios.h>
 #include <errno.h>
-
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <string>
 
 #ifndef B460800
@@ -85,14 +86,14 @@ PosixSerialPort::open(int baud,
             return false;
     }
 
-    _ffd = ::open((_fname +".flash").c_str(), O_RDWR);
-    if(_ffd == -1)
-    	_ffd = ::open((_fname + ".flash").c_str(), O_CREAT|O_RDWR);
+    remove((_fname +".flash").c_str());
+    _ffd = ::open((_fname +".flash").c_str(), O_CREAT|O_RDWR);
     if(_ffd == -1)
     {
-    	fprintf(stderr, "File not created:%s\n", _fname.c_str());
+    	fprintf(stderr, "Flash File not created:%s\n", (_fname+ ".flash").c_str());
     	return false;
     }
+    chmod((_fname +".flash").c_str(), S_IWGRP| S_IWUSR |S_IWOTH | S_IRGRP| S_IRUSR |S_IROTH);
 
     if (tcgetattr(_devfd, &options) == -1)
     {
@@ -291,14 +292,14 @@ COMPLETE:
         flush();
 
     ret = ::write(_ffd, buffer, res);
-	printf("LengthTobe:%d LengthWritten:%d\n", res, ret);
+//	printf("LengthTobe:%d LengthWritten:%d\n", res, ret);
     if(ret != res)
     {
     	res = (res - ret);
     	goto COMPLETE;
     }
     totalLen += ret;
-    printf("TotalLen:%d\n", totalLen);
+    //printf("TotalLen:%d\n", totalLen);
 
     return res;
 }
