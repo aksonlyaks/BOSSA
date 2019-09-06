@@ -320,7 +320,6 @@ main(int argc, char* argv[])
 			bool res;
 			uint8_t ret;
 			std::string str(argv[args]);
-			fprintf(stderr, "File found on %s\n", str.c_str());
 			if (config.forceUsb)
 				ret = samba.reboot(portFactory.create(config.portArg, str, isUsb));
 			else

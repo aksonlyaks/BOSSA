@@ -688,7 +688,6 @@ Samba::write(uint32_t addr, const uint8_t* buffer, int size)
     {
         _port->flush();
         writeBinary(buffer, size);
-        printf("Binary written\n");
     }
     else
     {
