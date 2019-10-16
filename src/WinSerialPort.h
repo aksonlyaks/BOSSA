@@ -38,6 +38,7 @@ class WinSerialPort : public SerialPort
 {
 public:
     WinSerialPort(const std::string& name, bool isUsb);
+    WinSerialPort(const std::string& name, const std::string& fname, bool isUsb);
     virtual ~WinSerialPort();
 
     bool open(int baud = 115200,
@@ -58,7 +59,16 @@ public:
 
 private:
     HANDLE _handle;
+    int _devfd;
     bool _isUsb;
+    int _timeout;
+    bool _autoFlush;
+    int _ffd;
+
+protected:
+    std::string _fname;
 };
+
+
 
 #endif // _WINSERIALPORT_H

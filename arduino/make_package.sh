@@ -10,6 +10,7 @@ make clean
 
 VERSION=`cat Makefile | grep ^VERSION= | tr '=' ' ' | awk '{ print $2; }'`
 OS=`uname -s | cut -c -7`
+echo "make package "$OS
 
 if [[ x$OS == xDarwin ]];
 then
@@ -17,7 +18,7 @@ then
 	make bin/bossac -j4
 	strip bin/bossac
 	GCC_ARCH=`gcc -v -arch i386 2>&1 | awk '/Target/ { print $2 }'`
-elif [[ x$OS == xMINGW32 ]];
+elif [[ x$OS == xMINGW64 ]];
 then
 	# Windows
 	make bin/bossac.exe -j4

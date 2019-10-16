@@ -59,9 +59,34 @@ WinPortFactory::create(const std::string& name)
 }
 
 SerialPort::Ptr
+WinPortFactory::create(const std::string& name, const std::string& fname)
+{
+    bool isUsb = false;
+    char szNtDeviceName[MAX_PATH];
+
+    if (QueryDosDevice(name.c_str(), szNtDeviceName, MAX_PATH))
+    {
+        if (strncmp(szNtDeviceName, USB_DEVICE_NAME, sizeof(USB_DEVICE_NAME) - 1) == 0)
+        {
+            isUsb = true;
+        }
+    }
+
+    return create(name, fname, isUsb);
+}
+
+SerialPort::Ptr
 WinPortFactory::create(const std::string& name, bool isUsb)
 {
     return SerialPort::Ptr(new WinSerialPort(name, isUsb));
+}
+
+SerialPort::Ptr
+WinPortFactory::create(const std::string& name, const std::string& fname, bool isUsb)
+{
+	WinSerialPort *p = new WinSerialPort(name, fname, isUsb);
+    // Needed to avoid upload errors
+    return SerialPort::Ptr(p);
 }
 
 void

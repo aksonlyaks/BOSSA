@@ -334,7 +334,9 @@ main(int argc, char* argv[])
 				fprintf(stderr, "waiting for device to reboot on %s\n", config.portArg.c_str());
 			}
 
+#ifndef MINGW64
 			sleep(4);
+#endif
 			if (config.forceUsb)
 				res = samba.connect(portFactory.create(config.portArg, str, isUsb));
 			else

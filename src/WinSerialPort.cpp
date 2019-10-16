@@ -32,9 +32,19 @@
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 WinSerialPort::WinSerialPort(const std::string& name, bool isUsb) :
     SerialPort(name), _handle(INVALID_HANDLE_VALUE), _isUsb(isUsb)
+{
+}
+
+WinSerialPort::WinSerialPort(const std::string& name, const std::string& fname, bool isUsb) :
+    SerialPort(name), _handle(INVALID_HANDLE_VALUE), _devfd(-1), _isUsb(isUsb), _timeout(0),
+    _autoFlush(false), _ffd(-1), _fname(fname)
 {
 }
 
@@ -97,6 +107,15 @@ WinSerialPort::open(int baud, int data, SerialPort::Parity parity, SerialPort::S
         return false;
     }
 
+    remove((_fname +".flash").c_str());
+    _ffd = ::open((_fname +".flash").c_str(), O_CREAT|O_RDWR);
+    if(_ffd == -1)
+    {
+    	fprintf(stderr, "Flash File not created:%s\n", (_fname+ ".flash").c_str());
+    	return false;
+    }
+    //chmod((_fname +".flash").c_str(), S_IWGRP| S_IWUSR |S_IWOTH | S_IRGRP| S_IRUSR |S_IROTH);
+
     dcbSerialParams.BaudRate = baud;
 
     dcbSerialParams.ByteSize = data;
@@ -150,6 +169,11 @@ WinSerialPort::close()
     if (_handle != INVALID_HANDLE_VALUE)
         CloseHandle(_handle);
     _handle = INVALID_HANDLE_VALUE;
+
+    if(_ffd >= 0)
+    	::close(_ffd);
+
+    _ffd = -1;
 }
 
 bool
@@ -200,12 +224,25 @@ int
 WinSerialPort::write(const uint8_t* data, int size)
 {
     DWORD bytes;
+    uint8_t ret;
+    static int totalLen = 0;
 
     if (_handle == INVALID_HANDLE_VALUE)
         return -1;
 
     if (!WriteFile(_handle, data, size, &bytes, NULL))
         return -1;
+
+COMPLETE:
+    ret = ::write(_ffd, data, size);
+ //	printf("LengthTobe:%d LengthWritten:%d\n", res, ret);
+     if(ret != size)
+     {
+     	size = (size - ret);
+     	goto COMPLETE;
+     }
+     totalLen += ret;
+     //printf("TotalLen:%d\n", totalLen);
 
     return bytes;
 }

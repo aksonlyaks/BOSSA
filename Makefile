@@ -33,11 +33,12 @@ $(info $(OS))
 #
 # Windows rules
 #
-ifeq ($(OS),windows)
+ifeq ($(OS),MINGW64)
 EXE=.exe
 COMMON_SRCS+=WinSerialPort.cpp WinPortFactory.cpp
 COMMON_LDFLAGS=-Wl,--enable-auto-import -static -static-libstdc++ -static-libgcc
 COMMON_LIBS=-Wl,--as-needed -lsetupapi
+MW_FLAGS=-DMINGW64
 BOSSA_RC=BossaRes.rc
 WIXDIR="C:\Program Files (x86)\Windows Installer XML v3.5\bin"
 
@@ -179,6 +180,9 @@ COMMON_CXXFLAGS+=-Wall -MT $@ -MD -MP -MF $(@:%.o=%.d) -DVERSION=\"$(VERSION)\" 
 WX_CXXFLAGS:=$(shell wx-config --cxxflags --version=$(WXVERSION)) -DWX_PRECOMP -Wno-ctor-dtor-privacy -O2 -fno-strict-aliasing
 BOSSA_CXXFLAGS=$(COMMON_CXXFLAGS) $(WX_CXXFLAGS)
 BOSSAC_CXXFLAGS=$(COMMON_CXXFLAGS)
+ifeq ($(OS),MINGW64)
+COMMON_CXXFLAGS+=$(MW_FLAGS)
+endif
 BOSSASH_CXXFLAGS=$(COMMON_CXXFLAGS)
 
 #
@@ -326,3 +330,6 @@ clean:
 # Include dependencies
 #
 -include $(DEPENDS)
+
+
+
