@@ -56,11 +56,31 @@ LinuxPortFactory::create(const std::string& name)
 
     return create(name, isUsb);
 }
+SerialPort::Ptr
+LinuxPortFactory::create(const std::string& name, const std::string& fname)
+{
+    bool isUsb = false;
+
+    if (name.find("usb") != std::string::npos)
+        isUsb = true;
+
+    return create(name, fname, isUsb);
+}
 
 SerialPort::Ptr
 LinuxPortFactory::create(const std::string& name, bool isUsb)
 {
     return SerialPort::Ptr(new PosixSerialPort(name, isUsb));
+}
+
+
+SerialPort::Ptr
+LinuxPortFactory::create(const std::string& name, const std::string& fname, bool isUsb)
+{
+    PosixSerialPort *p = new PosixSerialPort(name, fname, isUsb);
+    // Needed to avoid upload errors
+    p->setAutoFlush(true);
+    return SerialPort::Ptr(p);
 }
 
 std::string

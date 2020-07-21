@@ -32,6 +32,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#ifdef __linux__
+#include <unistd.h>
+#endif
 
 #include "CmdOpts.h"
 #include "Samba.h"

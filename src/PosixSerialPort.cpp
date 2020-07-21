@@ -87,7 +87,11 @@ PosixSerialPort::open(int baud,
     }
 
     remove((_fname +".flash").c_str());
+#ifdef __linux__
+    _ffd = ::open((_fname +".flash").c_str(), O_CREAT|O_RDWR, S_IXOTH);
+#else
     _ffd = ::open((_fname +".flash").c_str(), O_CREAT|O_RDWR);
+#endif
     if(_ffd == -1)
     {
     	fprintf(stderr, "Flash File not created:%s\n", (_fname+ ".flash").c_str());
