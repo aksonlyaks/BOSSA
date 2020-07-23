@@ -59,10 +59,31 @@ WinPortFactory::create(const std::string& name)
 }
 
 SerialPort::Ptr
+WinPortFactory::create(const std::string& name, const std::string& fname)
+{
+    bool isUsb = false;
+
+    if (name.find("usb") != std::string::npos)
+        isUsb = true;
+
+    return create(name, fname, isUsb);
+}
+
+SerialPort::Ptr
 WinPortFactory::create(const std::string& name, bool isUsb)
 {
     return SerialPort::Ptr(new WinSerialPort(name, isUsb));
 }
+
+SerialPort::Ptr
+WinPortFactory::create(const std::string& name, const std::string& fname, bool isUsb)
+{
+    WinSerialPort *p = new WinSerialPort(name, fname, isUsb);
+    // Needed to avoid upload errors
+    p->setAutoFlush(true);
+    return SerialPort::Ptr(p);
+}
+
 
 void
 WinPortFactory::cleanup()

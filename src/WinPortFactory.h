@@ -47,6 +47,8 @@ public:
 
     SerialPort::Ptr create(const std::string& name);
     SerialPort::Ptr create(const std::string& name, bool isUsb);
+	SerialPort::Ptr create(const std::string& name, const std::string& fname);
+    SerialPort::Ptr create(const std::string& name, const std::string& fname, bool isUsb);
 
 private:
     typedef DWORD WINAPI (*CM_Open_DevNode_Key)(DWORD, DWORD, DWORD, DWORD, ::PHKEY, DWORD);

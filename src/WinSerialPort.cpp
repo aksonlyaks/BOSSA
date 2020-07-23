@@ -38,6 +38,12 @@ WinSerialPort::WinSerialPort(const std::string& name, bool isUsb) :
 {
 }
 
+WinSerialPort::WinSerialPort(const std::string& name, const std::string& fname, bool isUsb) :
+    SerialPort(name), _devfd(-1), _isUsb(isUsb), _timeout(0),
+    _autoFlush(false), _ffd(-1), _fname(fname)
+{
+}
+
 WinSerialPort::~WinSerialPort()
 {
     close();
@@ -250,4 +256,10 @@ void
 WinSerialPort::flush()
 {
     Sleep(1);
+}
+
+void
+WinSerialPort::setAutoFlush(bool autoflush)
+{
+    
 }

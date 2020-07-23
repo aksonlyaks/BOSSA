@@ -33,11 +33,12 @@ $(info $(OS))
 #
 # Windows rules
 #
-ifeq ($(OS),windows)
+ifeq ($(OS),MINGW64)
 EXE=.exe
 COMMON_SRCS+=WinSerialPort.cpp WinPortFactory.cpp
 COMMON_LDFLAGS=-Wl,--enable-auto-import -static -static-libstdc++ -static-libgcc
 COMMON_LIBS=-Wl,--as-needed -lsetupapi
+MW_FLAGS=-DMINGW64
 BOSSA_RC=BossaRes.rc
 WIXDIR="C:\Program Files (x86)\Windows Installer XML v3.5\bin"
 
@@ -79,8 +80,8 @@ endif
 #
 ifeq ($(OS),Darwin)
 COMMON_SRCS+=PosixSerialPort.cpp OSXPortFactory.cpp
-COMMON_CXXFLAGS=-arch i386 -arch x86_64 -mmacosx-version-min=10.5
-COMMON_LDFLAGS=-arch i386 -arch x86_64 -mmacosx-version-min=10.5
+COMMON_CXXFLAGS=-arch i386 -arch x86_64 -mmacosx-version-min=10.7 -stdlib=libc++
+COMMON_LDFLAGS=-arch i386 -arch x86_64 -mmacosx-version-min=10.7
 APP=BOSSA.app
 DMG=bossa-$(VERSION).dmg
 VOLUME=BOSSA
@@ -175,11 +176,15 @@ ARMOBJCOPY=$(ARM)objcopy
 # CXX Flags
 #
 # COMMON_CXXFLAGS+=-Wall -Werror -MT $@ -MD -MP -MF $(@:%.o=%.d) -DVERSION=\"$(VERSION)\" -g -O2
-COMMON_CXXFLAGS+=-Wall -MT $@ -MD -MP -MF $(@:%.o=%.d) -DVERSION=\"$(VERSION)\" -g -O2
+COMMON_CXXFLAGS+=-Wall -MT $@ -MD -MP -MF $(@:%.o=%.d) -DVERSION=\"$(VERSION)\" -g -O2 -m32
 WX_CXXFLAGS:=$(shell wx-config --cxxflags --version=$(WXVERSION)) -DWX_PRECOMP -Wno-ctor-dtor-privacy -O2 -fno-strict-aliasing
 BOSSA_CXXFLAGS=$(COMMON_CXXFLAGS) $(WX_CXXFLAGS)
 BOSSAC_CXXFLAGS=$(COMMON_CXXFLAGS)
 BOSSASH_CXXFLAGS=$(COMMON_CXXFLAGS)
+ifeq ($(OS),MINGW64)
+COMMON_CXXFLAGS+=$(MW_FLAGS)
+endif
+
 
 #
 # LD Flags

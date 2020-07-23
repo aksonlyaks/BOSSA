@@ -49,10 +49,10 @@ public:
     virtual SerialPort::Ptr create(const std::string& name, const std::string& fname, bool isUsb) = 0;
 };
 
-#if defined(__WIN32__)
+//#if defined(__WIN32__)
 #include "WinPortFactory.h"
 typedef WinPortFactory PortFactory;
-#elif defined(__linux__)
+#if defined(__linux__)
 #include "LinuxPortFactory.h"
 typedef LinuxPortFactory PortFactory;
 #elif defined(__APPLE__)
@@ -63,7 +63,7 @@ typedef OSXPortFactory PortFactory;
 #include "BSDPortFactory.h"
 typedef BSDPortFactory PortFactory;
 #else
-#error "Platform is not supported"
+//#error "Platform is not supported"
 #endif
 
 #endif // _PORTFACTORY_H

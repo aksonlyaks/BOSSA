@@ -99,7 +99,7 @@ Samba::init()
     uint8_t cmd[3];
     uint32_t cid;
 
-    _port->timeout(TIMEOUT_NORMAL);
+    _port->timeout(TIMEOUT_QUICK);
     // Flush garbage
     uint8_t dummy[1024];
     _port->read(dummy, 1024);
@@ -110,22 +110,22 @@ Samba::init()
             printf("Send auto-baud\n");
 
         // RS-232 auto-baud sequence
-        _port->put(0x80);
+        /*_port->put(0x80);
         _port->get();
         _port->put(0x80);
         _port->get();
         _port->put('#');
-        _port->read(cmd, 3);
+        _port->read(cmd, 3);*/
     }
 
     // Set binary mode
     if (_debug)
         printf("Set binary mode\n");
-    cmd[0] = 'N';
+    /*cmd[0] = 'N';
     cmd[1] = '#';
     _port->write(cmd, 2);
     _port->read(cmd, 2);
-
+	*/
     // Read the chip ID
     try
     {

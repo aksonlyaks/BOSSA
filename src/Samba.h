@@ -30,10 +30,8 @@
 #ifndef _SAMBA_H
 #define _SAMBA_H
 
-#include <string>
+#include <string.h>
 #include <stdint.h>
-#include <exception>
-#include <memory>
 
 #include "SerialPort.h"
 

@@ -30,8 +30,6 @@
 #define _FLASH_H
 
 #include <stdint.h>
-#include <memory>
-#include <exception>
 
 #include "Samba.h"
 #include "WordCopyApplet.h"

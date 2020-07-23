@@ -322,29 +322,16 @@ main(int argc, char* argv[])
 		{
 			bool res;
 			uint8_t ret;
-			std::string str(argv[args]);
+			
+			//std::string str(argv[args]);
+			
 			if (config.forceUsb)
-				ret = samba.reboot(portFactory.create(config.portArg, str, isUsb));
+				res = samba.connect(portFactory.create(config.portArg, isUsb));
 			else
-				ret = samba.reboot(portFactory.create(config.portArg, str));
-			if ((ret == 2) || (ret == 3))
-			{
-				fprintf(stderr, "No device found on %s\n", config.portArg.c_str());
-				return NULL;
-			}
-			else if((ret == 1) || (ret == 0))
-			{
-				fprintf(stderr, "waiting for device to reboot on %s\n", config.portArg.c_str());
-			}
-
-			sleep(4);
-			if (config.forceUsb)
-				res = samba.connect(portFactory.create(config.portArg, str, isUsb));
-			else
-				res = samba.connect(portFactory.create(config.portArg, str));
+				res = samba.connect(portFactory.create(config.portArg));
 			if (!res)
 			{
-				fprintf(stderr, "No device found on %s\n", config.portArg.c_str());
+				fprintf(stdout, "No device found on %s\n", config.portArg.c_str());
 				return NULL;
 			}
 		}
